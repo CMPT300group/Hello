@@ -21,7 +21,6 @@ void write_branch(Instruction);
 void decode_instruction(uint32_t instruction_bits) {
     Instruction instruction = parse_instruction(instruction_bits);
     switch(instruction.opcode) {
-        case 0x0b:
         case 0x33:
             write_rtype(instruction);
             break;
@@ -57,10 +56,6 @@ void write_rtype(Instruction instruction) {
         case 0x0:
             switch (instruction.rtype.funct7) {
                 case 0x0:
-                if (instruction.rtype.opcode == 0x0b) {
-                    print_rtype("mac", instruction);
-                    break;
-                }
                     print_rtype("add", instruction);
                     break;
                 case 0x1:
@@ -228,7 +223,8 @@ void write_branch(Instruction instruction) {
 }
 
 void print_lui(Instruction instruction) {
-    printf(LUI_FORMAT, instruction.utype.rd, instruction.utype.imm);
+    unsigned int a = 0;
+    printf(LUI_FORMAT, instruction.utype.rd, a + instruction.utype.imm);
 }
 
 void print_jal(Instruction instruction) {
@@ -240,20 +236,19 @@ void print_ecall(Instruction instruction) {
 }
 
 void print_rtype(char *name, Instruction instruction) {
-  printf(RTYPE_FORMAT, name, instruction.rtype.rd, instruction.rtype.rs1,
-         instruction.rtype.rs2);
+    printf(RTYPE_FORMAT, name, instruction.rtype.rd, instruction.rtype.rs1, instruction.rtype.rs2);  
 }
 
 void print_itype_except_load(char *name, Instruction instruction, int imm) {
-    printf(ITYPE_FORMAT, name, instruction.itype.rd, instruction.itype.rs1, sign_extend_number(imm, 12));
+    printf(ITYPE_FORMAT, name, instruction.itype.rd, instruction.itype.rs1, sign_extend_number(imm, 12));  
 }
 
 void print_load(char *name, Instruction instruction) {
-    printf(MEM_FORMAT, name, instruction.itype.rd, instruction.itype.imm, instruction.itype.rs1);
+    printf(MEM_FORMAT, name, instruction.itype.rd, sign_extend_number(instruction.itype.imm, 12), instruction.itype.rs1); 
 }
 
 void print_store(char *name, Instruction instruction) {
-    printf(MEM_FORMAT, name, instruction.stype.rs2, get_store_offset(instruction), instruction.stype.rs1);
+    printf(MEM_FORMAT, name, instruction.stype.rs2, get_store_offset(instruction), instruction.stype.rs1); 
 }
 
 void print_branch(char *name, Instruction instruction) {
