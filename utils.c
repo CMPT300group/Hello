@@ -5,161 +5,170 @@
 /* Sign extends the given field to a 32-bit integer where field is
  * interpreted an n-bit integer. */
 int sign_extend_number(unsigned int field, unsigned int n) {
-   return (int) field << (32 - n) >> (32 - n);
+	unsigned int n_field_bits = field & ((1U << n) - 1);
+
+	// 1 -> negative; 0 -> positive
+	unsigned int msb = field & (1U << (n - 1));
+
+	unsigned int mask = msb ? ((1UL << 32) - 1) : 0;
+
+	mask <<= n;
+
+	mask ^= n_field_bits;
+
+	return mask;
 }
 
 /* Unpacks the 32-bit machine code instruction given into the correct
  * type within the instruction struct */
 Instruction parse_instruction(uint32_t instruction_bits) {
-  /* YOUR CODE HERE */
-  Instruction instruction;
-  // add x8, x0, x0     hex : 00000433  binary = 0000 0000 0000 0000 0000 01000
-  // Opcode: 0110011 (0x33) Get the Opcode by &ing 0x1111111, bottom 7 bits
-  instruction.opcode = instruction_bits & ((1U << 7) - 1);
+	Instruction instruction;
 
-  // Shift right to move to pointer to interpret next fields in instruction.
-  instruction_bits >>= 7;
+	instruction.opcode = instruction_bits & ((1U << 7) - 1);
+	instruction_bits >>= 7;
 
-  switch (instruction.opcode) {
-  // R-Type
-  case 0x0b:
-  case 0x33:
-    // instruction: 0000 0000 0000 0000 0000 destination : 01000
-    instruction.rtype.rd = instruction_bits & ((1U << 5) - 1);
-    instruction_bits >>= 5;
+	switch (instruction.opcode) {
+		// R-Type
+		case 0x33:
+			instruction.rtype.rd = instruction_bits & ((1U << 5) - 1);
+			instruction_bits >>= 5;
 
-    // instruction: 0000 0000 0000 0000 0 func3 : 000
-    instruction.rtype.funct3 = instruction_bits & ((1U << 3) - 1);
-    instruction_bits >>= 3;
+			instruction.rtype.funct3 = instruction_bits & ((1U << 3) - 1);
+			instruction_bits >>= 3;
 
-    // instruction: 0000 0000 0000  src1: 00000
-    instruction.rtype.rs1 = instruction_bits & ((1U << 5) - 1);
-    instruction_bits >>= 5;
+			instruction.rtype.rs1 = instruction_bits & ((1U << 5) - 1);
+			instruction_bits >>= 5;
 
-    // instruction: 0000 000        src2: 00000
-    instruction.rtype.rs2 = instruction_bits & ((1U << 5) - 1);
-    instruction_bits >>= 5;
+			instruction.rtype.rs2 = instruction_bits & ((1U << 5) - 1);
+			instruction_bits >>= 5;
 
-    // funct7: 0000 000
-    instruction.rtype.funct7 = instruction_bits & ((1U << 7) - 1);
-    break;
+			instruction.rtype.funct7 = instruction_bits & ((1U << 7) - 1);
 
-  // I-type 
-  case 0x13:
-  case 0x03:
-  case 0x73:
+			break;
+		// I-Type
+		case 0x03:
+		case 0x13:
+		case 0x73:
+			instruction.itype.rd = instruction_bits & ((1U << 5) - 1);
+			instruction_bits >>= 5;
 
-    instruction.itype.rd = instruction_bits & ((1U << 5) - 1);
-    instruction_bits >>= 5;
+			instruction.itype.funct3 = instruction_bits & ((1U << 3) - 1);
+			instruction_bits >>= 3;
 
-    instruction.itype.funct3 = instruction_bits & ((1U << 3) - 1);
-    instruction_bits >>= 3;
+			instruction.itype.rs1 = instruction_bits & ((1U << 5) - 1);
+			instruction_bits >>= 5;
 
-    instruction.itype.rs1 = instruction_bits & ((1U << 5) - 1);
-    instruction_bits >>= 5;
+			instruction.itype.imm = instruction_bits & ((1U << 12) - 1);
 
-    instruction.itype.imm = instruction_bits & ((1U << 12) - 1);
-    break;
+			break;
+		// S-Type
+		case 0x23:
+			instruction.stype.imm5 = instruction_bits & ((1U << 5) - 1);
+			instruction_bits >>= 5;
 
-    // S-type
-    case 0x23:
+			instruction.stype.funct3 = instruction_bits & ((1U << 3) - 1);
+			instruction_bits >>= 3;
 
-    instruction.stype.imm5 = instruction_bits & ((1U << 5) - 1);
-    instruction_bits >>= 5;
+			instruction.stype.rs1 = instruction_bits & ((1U << 5) - 1);
+			instruction_bits >>= 5;
 
-    instruction.stype.funct3 = instruction_bits & ((1U << 3) - 1);
-    instruction_bits >>= 3;
+			instruction.stype.rs2 = instruction_bits & ((1U << 5) - 1);
+			instruction_bits >>= 5;
 
-    instruction.stype.rs1 = instruction_bits & ((1U << 5) - 1);
-    instruction_bits >>= 5;
+			instruction.stype.imm7 = instruction_bits & ((1U << 7) - 1);
 
-    instruction.stype.rs2 = instruction_bits & ((1U << 5) - 1);
-    instruction_bits >>= 5;
+			break;
+		// SB-Type
+		case 0x63:
+			instruction.sbtype.imm5 = instruction_bits & ((1U << 5) - 1);
+			instruction_bits >>= 5;
 
-    instruction.stype.imm7 = instruction_bits & ((1U << 7) - 1);
-    break;
+			instruction.sbtype.funct3 = instruction_bits & ((1U << 3) - 1);
+			instruction_bits >>= 3;
 
-    // B-type
-    case 0x63:
+			instruction.sbtype.rs1 = instruction_bits & ((1U << 5) - 1);
+			instruction_bits >>= 5;
 
-    instruction.sbtype.imm5 = instruction_bits & ((1U << 5) - 1);
-    instruction_bits >>= 5;
+			instruction.sbtype.rs2 = instruction_bits & ((1U << 5) - 1);
+			instruction_bits >>= 5;
 
-    instruction.sbtype.funct3 = instruction_bits & ((1U << 3) - 1);
-    instruction_bits >>= 3;
+			instruction.rtype.funct7 = instruction_bits & ((1U << 7) - 1);
 
-    instruction.sbtype.rs1 = instruction_bits & ((1U << 5) - 1);
-    instruction_bits >>= 5;
+			break;
+		// U-Type
+		case 0x37:
+			instruction.utype.rd = instruction_bits & ((1U << 5) - 1);
+			instruction_bits >>= 5;
 
-    instruction.sbtype.rs2 = instruction_bits & ((1U << 5) - 1);
-    instruction_bits >>= 5;
+			instruction.utype.imm = instruction_bits & ((1U << 20) - 1);
 
-    instruction.sbtype.imm7 = instruction_bits & ((1U << 7) - 1);
-    break;
+			break;
+		// UJ-Type
+		case 0x6f:
+			instruction.ujtype.rd = instruction_bits & ((1U << 5) - 1);
+			instruction_bits >>= 5;
 
-    // U-type
-    case 0x37:
+			instruction.ujtype.imm = instruction_bits & ((1U << 20) - 1);
+			break;
+		default:
+			exit(EXIT_FAILURE);
+	}
 
-    instruction.utype.rd = instruction_bits & ((1U << 5) - 1);
-    instruction_bits >>= 5;
-
-    instruction.utype.imm = instruction_bits & ((1U << 20) - 1);
-    break;
-
-    // J-type
-    case 0x6F:
-
-    instruction.ujtype.rd = instruction_bits & ((1U << 5) - 1);
-    instruction_bits >>= 5;
-
-    instruction.ujtype.imm = instruction_bits & ((1U << 20) - 1);
-    break;
-
-
-  default:
-    exit(EXIT_FAILURE);
-  }
-  return instruction;
+	return instruction;
 }
 
-/* Return the number of bytes (from the current PC) to the branch label using
- * the given branch instruction */
+/* Return the number of bytes (from the current PC) to the branch label using the given
+ * branch instruction */
 int get_branch_offset(Instruction instruction) {
-  unsigned int offset = 0;
-  offset |= (instruction.sbtype.imm7 & 0b1000000) << 6;
-  offset |= (instruction.sbtype.imm5 & 0b00001) << 11;
-  offset |= (instruction.sbtype.imm7 & 0b0111111) << 5;
-  offset |= (instruction.sbtype.imm5 & 0b11110);
+	int offset = 0x00000000;
 
-  return sign_extend_number(offset, 13);
+	offset |= instruction.sbtype.imm5 & 0x0000001e; // imm[1:4]
+
+	offset |= (instruction.sbtype.imm7 << 5) & 0x000007e0; // imm[5:10]
+
+	offset |= (instruction.sbtype.imm5 << 11) & 0x00000800; // imm[11]
+
+	offset |= (instruction.sbtype.imm7 << 6) & 0x00001000; // imm[12]
+
+	return sign_extend_number(offset, 13);
 }
 
-/* Returns the number of bytes (from the current PC) to the jump label using the
- * given jump instruction */
+/* Returns the number of bytes (from the current PC) to the jump label using the given
+ * jump instruction */
 int get_jump_offset(Instruction instruction) {
-  unsigned int offset = 0;
-  offset |= (instruction.ujtype.imm & 0b01111111111000000000) >> 8;
-  offset |= (instruction.ujtype.imm & 0b00000000000100000000) << 3;
-  offset |= (instruction.ujtype.imm & 0b00000000000011111111) << 12;
-  offset |= (instruction.ujtype.imm & 0b10000000000000000000) << 1;
+	int offset = 0x00000000;
 
-  return sign_extend_number(offset, 21);
+	offset |= (instruction.ujtype.imm >> 8) & 0x000007fe; // imm[1:10]
+
+	offset |= (instruction.ujtype.imm << 3) & 0x00000800; // imm[11]
+
+	offset |= (instruction.ujtype.imm << 12) & 0x000ff000; // imm[12:19]
+
+	offset |= (instruction.ujtype.imm << 2) & 0x00100000;// imm[20]
+
+	return sign_extend_number(offset, 21);
 }
 
 int get_store_offset(Instruction instruction) {
-  return (int) (instruction.stype.imm7 << 5) | (instruction.stype.imm5);
+	int offset = 0x00000000;
+
+	offset |= instruction.stype.imm5 & 0x0000001f; // imm[0:4]
+
+	offset |= (instruction.stype.imm7 << 5) & 0x00000fe0; // imm[5:11]
+
+	return sign_extend_number(offset, 12);
 }
 
 void handle_invalid_instruction(Instruction instruction) {
-  printf("Invalid Instruction: 0x%08x\n", instruction.bits);
+    printf("Invalid Instruction: 0x%08x\n", instruction.bits);
 }
 
 void handle_invalid_read(Address address) {
-  printf("Bad Read. Address: 0x%08x\n", address);
-  exit(-1);
+    printf("Bad Read. Address: 0x%08x\n", address);
+    exit(-1);
 }
 
 void handle_invalid_write(Address address) {
-  printf("Bad Write. Address: 0x%08x\n", address);
-  exit(-1);
+    printf("Bad Write. Address: 0x%08x\n", address);
+    exit(-1);
 }
