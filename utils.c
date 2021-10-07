@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <inttypes.h>
-
+//hh
 /* From stack overflow post number 10090326 */
 int extract(int value, int begin, int end)
 {
