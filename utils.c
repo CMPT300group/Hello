@@ -2,77 +2,64 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-int get(unsigned int, int, int);
-
 /* Sign extends the given field to a 32-bit integer where field is
- * interpreted an n-bit integer. */ 
+ * interpreted an n-bit integer. Look in test_utils.c for examples. */ 
 int sign_extend_number( unsigned int field, unsigned int n) {
-    /* YOUR CODE HERE */
-    unsigned int output;
-    unsigned int mask = 0xFFFFFFFF << n;
-    if ((field & (1 << (n - 1))) != 0) {
-        output = field | mask;
+    unsigned bitStatus = (field >> (n-1) ) & 1; 
+    if(!bitStatus) return field;
+    for(int i = n; i < 32; i++) {
+        field = ((bitStatus << i)| (field & (~(1 << i))));
     }
-    else {
-        output = field & ~mask;
-    }
-    return (unsigned int) output;
+    return field;
 }
 
 /* Unpacks the 32-bit machine code instruction given into the correct
- * type within the instruction struct */ 
+ * type within the instruction struct. Look at types.h */ 
 Instruction parse_instruction(uint32_t instruction_bits) {
-    /* YOUR CODE HERE */
     Instruction instruction;
     instruction.bits = instruction_bits;
     return instruction;
 }
 
-int get(unsigned int num, int start, int end) {
-    int mask = ~(~0 << (end - start + 1));
-    return (num >>  start) & mask;
-}
-
 /* Return the number of bytes (from the current PC) to the branch label using the given
  * branch instruction */
 int get_branch_offset(Instruction instruction) {
-    /* YOUR CODE HERE */
-    unsigned int seven = instruction.sbtype.imm7;
-    unsigned int five = instruction.sbtype.imm5;
-    unsigned int first = get(seven, 6, 6);
-    unsigned int second = get(five, 0, 0);
-    unsigned int third = (first << 1) | second;
-    unsigned int fourth = get(seven, 0, 5);
-    unsigned int fifth = (third << 6) | fourth;
-    unsigned int sixth = get(five, 1, 4);
-    unsigned int last = (fifth << 4) | sixth;
-    return sign_extend_number((last << 1), 13);
+    unsigned offset = 0;
+    int imm = instruction.sbtype.imm5;
+    offset = (0x1e & imm)|offset;
+    offset = (0x800 & (imm<< 11))|offset;
+    imm = instruction.sbtype.imm7;
+    offset = (0x7e0 & (imm << 5))|offset;
+    offset = (0x1000 & (imm << 6))|offset;
+    return sign_extend_number(offset, 13);
 }
 
 /* Returns the number of bytes (from the current PC) to the jump label using the given
  * jump instruction */
 int get_jump_offset(Instruction instruction) {
-    /* YOUR CODE HERE */
-    unsigned int imm = instruction.ujtype.imm;
-    unsigned int first = get(imm, 0, 7);
-    unsigned int second = get(imm, 8, 8);
-    unsigned int third = get(imm, 9, 18);
-    unsigned int fourth = get(imm, 19, 19);
-    unsigned int value = ((((((fourth << 8)
-                            | first) << 1)
-                            | second) << 10)
-                            | third) << 1;
-    return sign_extend_number(value, 21);
+    unsigned offset = 0;
+    int imm = instruction.ujtype.imm;
+    offset = (0x800 & (imm << 3))|offset;
+    offset = (0x7fe & (imm >> 8))|offset;
+    offset = (0xff000 & (imm << 12))|offset;
+    offset = (0x100000 & (imm << 2))|offset;
+    return sign_extend_number(offset, 21);
 }
 
+/* Returns the byte offset (from the address in rs2) for storing info using the given
+ * store instruction */ 
 int get_store_offset(Instruction instruction) {
-    /* YOUR CODE HERE */
-    return sign_extend_number(((instruction.stype.imm7 << 5)
-                              | (instruction.stype.imm5)), 12);
+    unsigned offset = 0;
+    int imm = instruction.stype.imm5;
+    offset = (0x1f & imm)|offset;
+    imm = instruction.stype.imm7;
+    offset = (0xfe0 & (imm << 5))|offset;
+    return sign_extend_number(offset, 12);
 }
 
 void handle_invalid_instruction(Instruction instruction) {
     printf("Invalid Instruction: 0x%08x\n", instruction.bits); 
+    exit(-1);
 }
 
 void handle_invalid_read(Address address) {
